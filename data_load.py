@@ -1,25 +1,26 @@
-import glob
 import os
-import torch
-from torch.utils.data import Dataset, DataLoader
-import numpy as np
-import matplotlib.image as mpimg
-import pandas as pd
+
 import cv2
+import matplotlib.image as mpimg
+import numpy as np
+import torch
+from torch.utils.data import Dataset
 
 
 class FacialKeypointsDataset(Dataset):
     """Face Landmarks dataset."""
 
-    def __init__(self, csv_file, root_dir, transform=None):
+    def __init__(self, key_pts_frame, root_dir, transform=None):
         """
+        Changed to have data frame as argument, rather than CSV location so the training csv can be split into
+        training and validation sets
         Args:
             csv_file (string): Path to the csv file with annotations.
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied
                 on a sample.
         """
-        self.key_pts_frame = pd.read_csv(csv_file)
+        self.key_pts_frame = key_pts_frame
         self.root_dir = root_dir
         self.transform = transform
 
@@ -33,7 +34,7 @@ class FacialKeypointsDataset(Dataset):
         image = mpimg.imread(image_name)
 
         # if image has an alpha color channel, get rid of it
-        if (image.shape[2] == 4):
+        if image.shape[2] == 4:
             image = image[:, :, 0:3]
 
         key_pts = self.key_pts_frame.iloc[idx, 1:].as_matrix()
@@ -45,8 +46,6 @@ class FacialKeypointsDataset(Dataset):
 
         return sample
 
-
-# tranforms
 
 class Normalize(object):
     """Convert a color image to grayscale and normalize the color range to [0,1]."""
@@ -135,6 +134,19 @@ class RandomCrop(object):
 
         key_pts = key_pts - [left, top]
 
+        return {'image': image, 'keypoints': key_pts}
+
+
+class RandomRotation(object):
+
+    def __call__(self, sample):
+        image, key_pts = sample['image'], sample['keypoints']
+
+        image = image.transpose()
+        # print("Before")
+        # print(key_pts)
+        # key_pts = key_pts.transpose()
+        # print(key_pts)
         return {'image': image, 'keypoints': key_pts}
 
 
